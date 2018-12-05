@@ -1,26 +1,16 @@
-<template lang="pug">
-  .vuecal__cell(:class="[cssClass, splits.length ? 'splitted' : '']" :style="cellStyles")
-    .vuecal__cell-content(:class="splits.length && `vuecal__cell-split ${splits[i - 1].class}`" v-for="i in (splits.length || 1)")
-      .split-label(v-if="splits.length" v-html="splits[i - 1].label")
-      div(v-if="content" v-html="content")
-      div(v-else)
-        .vuecal__no-event(v-if="!events.length") {{ texts.noEvent }}
-        .vuecal__event(:class="eventClasses(event)"
-                       v-else
-                       v-for="(event, j) in (splits.length ? splitEvents[i] : events)" :key="j"
-                       :style="eventStyles(event)"
-                       @click.stop="focusEvent(event)")
-          .vuecal__event-delete(@click.stop.prevent="deleteEvent(event)") {{ texts.deleteEvent }}
-          //- .vuecal__event-title(v-if="$parent.editableEvents && event.title")
-          //-   input(type="text" v-model="event.title")
-          .vuecal__event-title(v-if="event.title") {{ event.title }}
-          .vuecal__event-time(v-if="event.startTime")
-            | {{ event.startTime }}
-            span(v-if="event.endTime") &nbsp;- {{ event.endTime }}
-          .vuecal__event-content(v-if="event.content" v-html="event.content")
-          .vuecal__event-resize-handle(v-if="event.startTime && $parent.resizableEvents"
-                                       @mousedown="$parent.resizableEvents && $parent.time && onMouseDown($event, event)"
-                                       @touchstart="$parent.resizableEvents && $parent.time && onMouseDown($event, event)")
+<template>
+    <div class="vuecal__cell" :class="[cssClass, splits.length ? 'splitted' : '']" :style="cellStyles">
+        <div class="vuecal__cell-content" :class="splits.length && `vuecal__cell-split ${splits[i - 1].class}`" v-for="i in (splits.length || 1)" :key="i">
+            <div class="split-label" v-if="splits.length" v-html="splits[i - 1].label"></div>
+            <div class="vuecal__no-event" @click.native="onMouseDown($event)" v-if="!events.length">{{ texts.noEvent }}</div>
+            <div class="vuecal__event" :class="eventClasses(event)" v-else v-for="(event, j) in (splits.length ? splitEvents[i] : events)" :key="j" :style="eventStyles(event)" @click.stop="focusEvent(event)">
+                <div class="vuecal__event-delete" @click.stop.prevent="deleteEvent(event)">{{ texts.deleteEvent }}</div>
+                <div class="vuecal__event-title" v-if="event.title">{{ event.title }}</div>
+                <div class="vuecal__event-time" v-if="event.startTime">{{ event.startTime }}<span v-if="event.endTime">&nbsp;- {{ event.endTime }}</span></div>
+                <div class="vuecal__event-content" v-if="event.content" v-html="event.content"></div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -69,7 +59,7 @@ export default {
 
       return {
         top: `${event.top}px`,
-        height: `${this.resizeEvent.newHeight && this.resizeEvent.eventId === event.id ? this.resizeEvent.newHeight : event.height}px`
+        height: `${event.height}px`
       }
     },
 
@@ -123,18 +113,6 @@ export default {
       })
     },
 
-    onResizeEvent (eventId, newHeight) {
-      let event = this.events.filter(e => e.id === eventId)[0]
-      if (event) {
-        event.height = Math.max(newHeight, 10)
-        this.updateEndTimeOnResize(event)
-
-        // if (!event.background) {
-        //   this.checkOverlappingEvents(event)
-        // }
-      }
-    },
-
     updateEndTimeOnResize (event) {
       const bottom = event.top + event.height
       const endTime = (bottom / this.timeCellHeight * this.timeStep + this.timeFrom) / 60
@@ -143,11 +121,6 @@ export default {
 
       event.endTimeMinutes = endTime * 60
       event.endTime = `${hours}:${(minutes < 10 ? '0' : '') + minutes}`
-    },
-
-    onMouseDown (e, event) {
-      const start = 'ontouchstart' in window ? e.touches[0].clientY : e.clientY
-      this.$parent.resizeEvent = Object.assign(this.$parent.resizeEvent, { start, originalHeight: event.height, newHeight: event.height, eventId: event.id })
     },
 
     deleteEvent (event) {
@@ -194,12 +167,6 @@ export default {
     },
     cellStyles () {
       return { minWidth: `${this.$parent.minCellWidth}px` || null }
-    },
-    resizeEvent () {
-      if (this.$parent.resizeEvent.eventId) {
-        this.onResizeEvent(this.$parent.resizeEvent.eventId, this.$parent.resizeEvent.newHeight)
-      }
-      return this.$parent.resizeEvent
     },
     events: {
       get () {
@@ -352,21 +319,6 @@ export default {
   &.vuecal__event--overlapping.split3.split-middle {left: 33.33%;right: 33.33%;}
   &.vuecal__event--background {z-index: 0;}
   &.vuecal__event--focus {box-shadow: 1px 1px 6px rgba(0,0,0,0.2);z-index: 3;}
-}
-
-.vuecal__event-resize-handle {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1em;
-  background-color: rgba(255, 255, 255, 0.3);
-  opacity: 0;
-  transform: translateY(110%);
-  transition: 0.3s;
-  cursor: ns-resize;
-
-  .vuecal__event:hover & {opacity: 1;transform: translateY(0);}
 }
 
 .vuecal__event-delete {
